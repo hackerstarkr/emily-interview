@@ -1,0 +1,647 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Emily – AI Interview Coach</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Mono:wght@400;500&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',system-ui,sans-serif;background:#080b14;color:#e2e8f0;min-height:100vh}
+:root{--bg:#080b14;--surface:#0f1420;--border:#1e2640;--accent:#7c6df4;--accent2:#a855f7;--green:#10b981;--red:#ef4444;--yellow:#f59e0b;--text:#e2e8f0;--muted:#4b5563;--soft:#8892a4}
+select option{background:#0f1420}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:#1e2640;border-radius:4px}
+.screen{display:none;min-height:100vh}.screen.active{display:flex}
+#setup{flex-direction:column;align-items:center;justify-content:center;padding:28px 16px;position:relative;overflow:hidden;background:#000;min-height:100vh}
+#stars-canvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.nebula{position:fixed;border-radius:50%;filter:blur(80px);opacity:0.18;pointer-events:none;z-index:0;animation:nebulaDrift 20s ease-in-out infinite alternate}
+.nebula1{width:600px;height:600px;background:radial-gradient(circle,#7c6df4,transparent);top:-150px;left:-100px;animation-duration:25s}
+.nebula2{width:500px;height:500px;background:radial-gradient(circle,#a855f7,transparent);bottom:-100px;right:-100px;animation-duration:30s}
+.nebula3{width:400px;height:400px;background:radial-gradient(circle,#06b6d4,transparent);top:40%;left:40%;animation-duration:22s}
+.scan-line{position:fixed;top:0;left:0;width:100%;height:2px;background:linear-gradient(90deg,transparent,rgba(124,109,244,0.6),transparent);animation:scanDown 6s linear infinite;z-index:1;pointer-events:none}
+.grid-overlay{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none;background-image:linear-gradient(rgba(124,109,244,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(124,109,244,0.04) 1px,transparent 1px);background-size:60px 60px}
+.particle{position:fixed;width:2px;height:2px;background:#7c6df4;border-radius:50%;pointer-events:none;z-index:0;animation:floatUp linear infinite;opacity:0}
+.hud-corner{position:fixed;width:60px;height:60px;z-index:2;pointer-events:none}
+.hud-tl{top:20px;left:20px;border-top:2px solid rgba(124,109,244,0.5);border-left:2px solid rgba(124,109,244,0.5)}
+.hud-tr{top:20px;right:20px;border-top:2px solid rgba(124,109,244,0.5);border-right:2px solid rgba(124,109,244,0.5)}
+.hud-bl{bottom:20px;left:20px;border-bottom:2px solid rgba(124,109,244,0.5);border-left:2px solid rgba(124,109,244,0.5)}
+.hud-br{bottom:20px;right:20px;border-bottom:2px solid rgba(124,109,244,0.5);border-right:2px solid rgba(124,109,244,0.5)}
+.setup-content{position:relative;z-index:10;display:flex;flex-direction:column;align-items:center;width:100%}
+.avatar-wrap{position:relative;margin-bottom:16px}
+.avatar{width:96px;height:96px;border-radius:50%;background:linear-gradient(135deg,#7c6df4,#a855f7);display:flex;align-items:center;justify-content:center;font-size:40px;box-shadow:0 0 0 2px rgba(124,109,244,0.3),0 0 40px rgba(124,109,244,0.6),0 0 80px rgba(124,109,244,0.3);animation:avatarPulse 3s ease-in-out infinite}
+.avatar-ring{position:absolute;top:-8px;left:-8px;right:-8px;bottom:-8px;border-radius:50%;border:1px solid rgba(124,109,244,0.4);animation:ringRotate 8s linear infinite}
+.avatar-ring::before{content:'';position:absolute;top:-3px;left:50%;width:6px;height:6px;background:#7c6df4;border-radius:50%;transform:translateX(-50%);box-shadow:0 0 10px #7c6df4}
+.avatar-ring2{position:absolute;top:-18px;left:-18px;right:-18px;bottom:-18px;border-radius:50%;border:1px solid rgba(168,85,247,0.2);animation:ringRotate 14s linear infinite reverse}
+.emily-title{font-family:'DM Serif Display',serif;font-size:44px;font-weight:normal;background:linear-gradient(90deg,#a78bfa,#60a5fa,#a78bfa);background-size:200%;-webkit-background-clip:text;-webkit-text-fill-color:transparent;animation:shimmer 4s linear infinite;letter-spacing:2px;margin-bottom:4px}
+.emily-sub{font-size:12px;color:rgba(124,109,244,0.8);margin-bottom:6px;font-family:'DM Mono',monospace;letter-spacing:3px;text-transform:uppercase}
+.emily-tagline{font-size:13px;color:var(--soft);margin-bottom:32px;letter-spacing:1px}
+.card{background:rgba(15,20,32,0.82);border:1px solid rgba(124,109,244,0.25);border-radius:20px;padding:28px;width:100%;max-width:480px;box-shadow:0 8px 60px rgba(0,0,0,0.7),inset 0 1px 0 rgba(255,255,255,0.05);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+.mic-banner{background:rgba(16,185,129,0.08);border:1px solid rgba(16,185,129,0.3);border-radius:10px;padding:11px 14px;margin-bottom:18px;font-size:12px;color:#6ee7b7;line-height:1.6;display:flex;gap:10px;align-items:flex-start}
+.field{margin-bottom:15px}
+.field label{display:block;font-size:10px;letter-spacing:2px;text-transform:uppercase;color:rgba(124,109,244,0.9);margin-bottom:6px;font-weight:600;font-family:'DM Mono',monospace}
+.field input,.field select{width:100%;padding:10px 13px;border-radius:8px;border:1px solid rgba(124,109,244,0.2);background:rgba(8,11,20,0.8);color:var(--text);font-size:14px;outline:none;font-family:'Inter',sans-serif;transition:border-color .2s}
+.field input:focus,.field select:focus{border-color:rgba(124,109,244,0.6)}
+.groq-badge{padding:10px 13px;border-radius:8px;border:1px solid rgba(16,185,129,0.3);background:rgba(16,185,129,0.06);color:#6ee7b7;font-size:13px;display:flex;align-items:center;gap:8px}
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{padding:6px 13px;border-radius:999px;border:1px solid rgba(124,109,244,0.2);background:transparent;color:var(--muted);cursor:pointer;font-size:12px;transition:all .15s;user-select:none}
+.chip.on{border-color:rgba(124,109,244,0.7);background:rgba(124,109,244,0.12);color:#a78bfa}
+.voice-row{display:flex;align-items:center;gap:9px;margin-bottom:22px}
+.voice-row input{accent-color:var(--accent);width:15px;height:15px;cursor:pointer}
+.voice-row label{font-size:13px;color:var(--soft);cursor:pointer}
+.start-btn{width:100%;padding:15px;border-radius:12px;border:none;background:linear-gradient(135deg,#7c6df4,#a855f7);color:white;font-size:15px;font-weight:700;cursor:pointer;box-shadow:0 4px 30px rgba(124,109,244,0.5);display:flex;align-items:center;justify-content:center;gap:10px;font-family:'Inter',sans-serif;transition:all .2s;position:relative;overflow:hidden}
+.start-btn::before{content:'';position:absolute;top:-50%;left:-60%;width:40%;height:200%;background:rgba(255,255,255,0.15);transform:skewX(-20deg);animation:btnSheen 4s ease-in-out infinite}
+.start-btn:disabled{background:#1f2937;box-shadow:none;cursor:not-allowed}
+#paused{align-items:center;justify-content:center;padding:24px;background:var(--bg)}
+.pause-card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:40px;max-width:400px;width:100%;text-align:center}
+.resume-btn{width:100%;padding:14px;border-radius:11px;border:none;background:linear-gradient(135deg,var(--green),#059669);color:white;font-size:15px;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;margin-bottom:12px}
+.stop-btn-big{width:100%;padding:13px;border-radius:11px;border:1.5px solid rgba(239,68,68,.5);background:rgba(239,68,68,.08);color:var(--red);font-size:14px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif}
+#interview{flex-direction:column;height:100vh;overflow:hidden;background:var(--bg)}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:11px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.mini-avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:15px}
+.timer{font-family:'DM Mono',monospace;font-size:13px;padding:4px 11px;border-radius:999px;background:var(--bg);color:var(--soft);border:1px solid var(--border);font-weight:600;min-width:52px;text-align:center;display:none}
+.timer.warn{background:rgba(239,68,68,.15);color:var(--red);border-color:rgba(239,68,68,.4)}
+.pause-topbtn{padding:6px 13px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--yellow);font-size:13px;cursor:pointer;font-weight:600;font-family:'Inter',sans-serif}
+.stop-topbtn{padding:6px 13px;border-radius:8px;border:1px solid rgba(239,68,68,.4);background:rgba(239,68,68,.08);color:var(--red);font-size:13px;cursor:pointer;font-weight:600;font-family:'Inter',sans-serif}
+.chat{flex:1;overflow-y:auto;padding:18px 14px;max-width:720px;margin:0 auto;width:100%}
+.msg{margin-bottom:18px;animation:fadeUp .25s ease}
+.msg-row{display:flex;gap:9px;align-items:flex-start}
+.msg-row.right{flex-direction:row-reverse}
+.msg-av{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--accent),var(--accent2));display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0}
+.msg-av.ua{background:var(--accent);font-size:13px;font-weight:700;font-family:'DM Mono',monospace}
+.msg-label{font-size:11px;color:var(--muted);margin-bottom:4px;font-family:'DM Mono',monospace}
+.msg-label.right{text-align:right}
+.bubble{border-radius:13px;padding:11px 15px;font-size:14px;line-height:1.75;max-width:82%}
+.eb{background:var(--surface);border:1px solid var(--border);border-top-left-radius:3px;color:#c8d6e8}
+.ub{background:linear-gradient(135deg,var(--accent),#5b21b6);border-top-right-radius:3px;color:white}
+.lb{background:rgba(124,109,244,.08);border:1.5px dashed rgba(124,109,244,.4);border-radius:13px;padding:11px 15px;font-size:14px;line-height:1.75;max-width:82%;color:#a78bfa;font-style:italic}
+.qb{background:var(--surface);border:1.5px solid var(--accent);border-radius:13px;padding:14px 16px}
+.qt{font-size:10px;font-family:'DM Mono',monospace;color:var(--accent);margin-bottom:6px;letter-spacing:1.2px}
+.qq{font-size:15px;font-weight:600;color:var(--text);line-height:1.55}
+.hb{background:rgba(16,185,129,.07);border:1px solid rgba(16,185,129,.25);border-radius:9px;padding:9px 13px;font-size:13px;color:var(--green);margin-left:41px}
+.td{display:flex;gap:5px;align-items:center;padding:14px 18px;background:var(--surface);border:1px solid var(--border);border-radius:13px;border-top-left-radius:3px;width:fit-content}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.controls{background:var(--surface);border-top:1px solid var(--border);padding:14px 14px 16px;flex-shrink:0;max-width:720px;margin:0 auto;width:100%}
+.aw{position:relative;margin-bottom:10px}
+#answerBox{width:100%;padding:10px 46px 10px 13px;border-radius:9px;border:1.5px solid var(--border);background:var(--bg);color:var(--text);font-size:14px;resize:none;font-family:'Inter',sans-serif;outline:none;transition:border-color .2s;line-height:1.6}
+#answerBox.listening{border-color:rgba(239,68,68,.5)}
+.wave{position:absolute;top:50%;right:12px;transform:translateY(-50%);display:flex;gap:3px;align-items:center;pointer-events:none}
+.wb{width:3px;border-radius:2px;background:var(--red)}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap}
+.mic-btn{flex:2;min-width:140px;padding:11px 14px;border-radius:9px;border:2px solid var(--accent);background:linear-gradient(135deg,var(--accent),var(--accent2));color:white;font-weight:700;font-size:13px;cursor:pointer;transition:all .2s;font-family:'Inter',sans-serif}
+.mic-btn.on{border-color:var(--red);background:rgba(239,68,68,.12);color:var(--red);box-shadow:0 0 16px rgba(239,68,68,.4)}
+.mic-btn.spk{background:#1f2937;border-color:var(--border);color:var(--muted);cursor:not-allowed}
+.sub-btn{flex:2;padding:11px 14px;border-radius:9px;border:none;background:#1f2937;color:#4b5563;font-weight:700;font-size:13px;cursor:not-allowed;transition:all .2s;font-family:'Inter',sans-serif}
+.sub-btn.ready{background:linear-gradient(135deg,var(--green),#059669);color:white;cursor:pointer}
+.hint-btn{flex:1;padding:11px 10px;border-radius:9px;border:1.5px solid var(--border);background:transparent;color:#a78bfa;font-weight:500;font-size:13px;cursor:pointer;font-family:'Inter',sans-serif}
+.dk-btn{flex:1;padding:11px 10px;border-radius:9px;border:1.5px solid rgba(239,68,68,.3);background:rgba(239,68,68,.06);color:var(--red);font-weight:500;font-size:13px;cursor:pointer;font-family:'Inter',sans-serif}
+.status{text-align:center;font-size:11px;color:var(--muted);margin-top:8px;font-family:'DM Mono',monospace;min-height:16px}
+#report{flex-direction:column;align-items:center;padding:36px 16px;overflow-y:auto;background:var(--bg)}
+.rc{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:32px;max-width:620px;width:100%}
+.sr{width:96px;height:96px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;position:relative}
+.si{width:70px;height:70px;border-radius:50%;background:var(--surface);position:absolute;display:flex;align-items:center;justify-content:center;font-family:'DM Serif Display',serif;font-size:20px}
+.sp{width:18px;height:18px;border:2px solid rgba(255,255,255,.3);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite;display:inline-block}
+.slg{width:40px;height:40px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px}
+.nb{width:100%;padding:14px;border-radius:11px;border:none;background:linear-gradient(135deg,var(--accent),var(--accent2));color:white;font-weight:700;font-size:15px;cursor:pointer;font-family:'Inter',sans-serif}
+.stl{font-size:11px;color:#4b5563;letter-spacing:1.5px;text-transform:uppercase;font-weight:600;margin-bottom:9px;font-family:'DM Mono',monospace}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+@keyframes bounce{0%,60%,100%{transform:translateY(0)}30%{transform:translateY(-6px)}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes wave{0%,100%{transform:scaleY(.4)}50%{transform:scaleY(1)}}
+@keyframes nebulaDrift{0%{transform:translate(0,0) scale(1)}50%{transform:translate(30px,-20px) scale(1.1)}100%{transform:translate(-20px,30px) scale(0.95)}}
+@keyframes scanDown{0%{top:-2px;opacity:0}10%{opacity:1}90%{opacity:1}100%{top:100%;opacity:0}}
+@keyframes avatarPulse{0%,100%{box-shadow:0 0 0 2px rgba(124,109,244,0.3),0 0 40px rgba(124,109,244,0.6),0 0 80px rgba(124,109,244,0.3)}50%{box-shadow:0 0 0 2px rgba(168,85,247,0.5),0 0 60px rgba(168,85,247,0.8),0 0 100px rgba(168,85,247,0.4)}}
+@keyframes ringRotate{to{transform:rotate(360deg)}}
+@keyframes shimmer{0%{background-position:0%}100%{background-position:200%}}
+@keyframes btnSheen{0%{left:-60%}40%,100%{left:120%}}
+@keyframes floatUp{0%{opacity:0;transform:translateY(0)}20%{opacity:0.6}80%{opacity:0.3}100%{opacity:0;transform:translateY(-100vh)}}
+</style>
+</head>
+<body>
+
+<!-- ══ SETUP ══ -->
+<div id="setup" class="screen active">
+  <canvas id="stars-canvas"></canvas>
+  <div class="nebula nebula1"></div><div class="nebula nebula2"></div><div class="nebula nebula3"></div>
+  <div class="scan-line"></div><div class="grid-overlay"></div>
+  <div class="hud-corner hud-tl"></div><div class="hud-corner hud-tr"></div>
+  <div class="hud-corner hud-bl"></div><div class="hud-corner hud-br"></div>
+  <div class="setup-content">
+    <div class="avatar-wrap">
+      <div class="avatar-ring2"></div><div class="avatar-ring"></div>
+      <div class="avatar">🤖</div>
+    </div>
+    <div class="emily-title">Emily</div>
+    <div class="emily-sub">AI · Interview · Coach</div>
+    <div class="emily-tagline">Java &amp; Spring Boot · EPAM Preparation</div>
+    <div class="card">
+      <div class="mic-banner">
+        <span style="font-size:16px;flex-shrink:0">🎙️</span>
+        <div>Mic permission asked <strong>once only</strong> at start. Click <strong>Allow</strong> — Chrome will NOT ask again during the interview.</div>
+      </div>
+      <div class="field"><label>Your Name</label><input id="cfgName" type="text" value="Kamran"/></div>
+      <div class="field"><label>Difficulty</label>
+        <select id="cfgDiff">
+          <option value="mixed">Mixed (Easy + Medium + Hard)</option>
+          <option value="easy">Easy</option><option value="medium">Medium</option><option value="hard">Hard</option>
+        </select>
+      </div>
+      <div class="field"><label>Questions</label>
+        <select id="cfgNum"><option value="4">4</option><option value="6" selected>6</option><option value="8">8</option><option value="10">10</option></select>
+      </div>
+      <div class="field"><label>Time per Question</label>
+        <select id="cfgTime"><option value="0">No limit</option><option value="90">90 sec</option><option value="120" selected>2 min</option><option value="180">3 min</option></select>
+      </div>
+      <div class="field"><label>Topics</label><div class="chips" id="topicChips"></div></div>
+      <div class="field"><label>AI Provider</label><div class="groq-badge">⚡ Groq — Free &amp; Fast (LLaMA 3.3 70B)</div></div>
+      <div class="field" style="margin-bottom:18px">
+        <label>Groq API Key <span style="color:var(--green);font-size:10px">(console.groq.com/keys)</span></label>
+        <div style="position:relative">
+          <input id="apiKey" type="password" placeholder="gsk_..."/>
+          <button onclick="toggleKey()" id="keyBtn" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:transparent;border:none;color:var(--soft);cursor:pointer;font-size:12px;font-family:inherit">Show</button>
+        </div>
+      </div>
+      <div class="voice-row">
+        <input type="checkbox" id="cfgVoice" checked/>
+        <label for="cfgVoice">Enable Emily's voice (Chrome recommended)</label>
+      </div>
+      <button class="start-btn" id="startBtn" onclick="startInterview()">🎙️ &nbsp;Start Interview with Emily</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PAUSED ══ -->
+<div id="paused" class="screen">
+  <div class="pause-card">
+    <div style="font-size:52px;margin-bottom:16px">⏸️</div>
+    <div style="font-family:'DM Serif Display',serif;font-size:26px;margin-bottom:8px">Paused</div>
+    <div id="pauseSub" style="color:var(--soft);font-size:14px;margin-bottom:6px">Question 1 of 6</div>
+    <div style="color:var(--muted);font-size:13px;margin-bottom:32px;line-height:1.7">Resume to repeat current question.</div>
+    <button class="resume-btn" onclick="resumeInterview()">▶ Resume</button>
+    <button class="stop-btn-big" onclick="stopInterview()">⏹ Stop &amp; Go Home</button>
+  </div>
+</div>
+
+<!-- ══ INTERVIEW ══ -->
+<div id="interview" class="screen">
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="mini-avatar">🤖</div>
+      <div>
+        <div style="font-family:'DM Serif Display',serif;font-size:15px">Emily</div>
+        <div id="qProgress" style="font-size:11px;color:var(--muted)">Q 1 / 6</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="timer" id="timer">2:00</div>
+      <button class="pause-topbtn" onclick="pauseInterview()">⏸ Pause</button>
+      <button class="stop-topbtn" onclick="stopInterview()">⏹ Stop</button>
+    </div>
+  </div>
+  <div class="chat" id="chat"></div>
+  <div class="controls">
+    <div class="aw">
+      <textarea id="answerBox" rows="2" placeholder="🎙️ Listening — your words appear here live. You can also type."></textarea>
+      <div class="wave" id="wave" style="display:none">
+        <div class="wb" style="height:8px;animation:wave .6s 0s infinite"></div>
+        <div class="wb" style="height:14px;animation:wave .6s .1s infinite"></div>
+        <div class="wb" style="height:20px;animation:wave .6s .2s infinite"></div>
+        <div class="wb" style="height:14px;animation:wave .6s .3s infinite"></div>
+        <div class="wb" style="height:8px;animation:wave .6s .4s infinite"></div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="mic-btn" id="micBtn" onclick="toggleMic()">🎙️ Start Listening</button>
+      <button class="sub-btn" id="submitBtn" onclick="submitAnswer()" disabled>✓ Submit</button>
+      <button class="hint-btn" id="hintBtn" onclick="getHint()">💡 Hint</button>
+      <button class="dk-btn" id="dkBtn" onclick="dontKnow()">🤷 Don't Know</button>
+    </div>
+    <div class="status" id="statusBar"></div>
+  </div>
+</div>
+
+<!-- ══ REPORT ══ -->
+<div id="report" class="screen">
+  <div class="rc" id="reportCard">
+    <div style="text-align:center;padding:48px 0"><div class="slg"></div><p style="color:var(--muted)">Generating report…</p></div>
+  </div>
+</div>
+
+<script>
+// ══ STARS ══
+(function(){
+  const cv=document.getElementById('stars-canvas');
+  if(!cv) return;
+  const ctx=cv.getContext('2d');
+  let W,H,stars=[],sh=[];
+  function rsz(){W=cv.width=innerWidth;H=cv.height=innerHeight;}
+  window.addEventListener('resize',rsz);rsz();
+  for(let i=0;i<220;i++) stars.push({x:Math.random(),y:Math.random(),r:Math.random()*1.5+0.3,a:Math.random(),tw:Math.random()*Math.PI*2,sp:Math.random()*0.0003+0.0001});
+  setInterval(()=>sh.push({x:Math.random()*W,y:Math.random()*H*0.5,vx:Math.random()*8+4,vy:Math.random()*4+2,len:Math.random()*80+60,life:1}),3500);
+  function draw(){
+    ctx.clearRect(0,0,W,H);
+    stars.forEach(s=>{s.tw+=s.sp*60;const a=s.a*(0.5+0.5*Math.sin(s.tw));ctx.beginPath();ctx.arc(s.x*W,s.y*H,s.r,0,Math.PI*2);ctx.fillStyle=`rgba(200,210,255,${a})`;ctx.fill();});
+    sh=sh.filter(s=>{s.x+=s.vx;s.y+=s.vy;s.life-=0.02;if(s.life<=0)return false;
+      const g=ctx.createLinearGradient(s.x,s.y,s.x-s.len,s.y-s.len*s.vy/Math.max(s.vx,1));
+      g.addColorStop(0,`rgba(180,160,255,${s.life})`);g.addColorStop(1,'rgba(180,160,255,0)');
+      ctx.beginPath();ctx.moveTo(s.x,s.y);ctx.lineTo(s.x-s.len,s.y-s.len*s.vy/Math.max(s.vx,1));
+      ctx.strokeStyle=g;ctx.lineWidth=1.5;ctx.stroke();return true;});
+    requestAnimationFrame(draw);
+  }
+  draw();
+  setInterval(()=>{const p=document.createElement('div');p.className='particle';p.style.cssText=`left:${Math.random()*100}%;top:${80+Math.random()*20}%;animation-duration:${6+Math.random()*8}s;animation-delay:${Math.random()*4}s`;document.getElementById('setup').appendChild(p);setTimeout(()=>p.remove(),14000);},600);
+})();
+
+// ══ SETUP ══
+const CAND={years:4,stack:"Java, Spring Boot, Kafka, AWS, Docker, Kubernetes"};
+const TOPICS=["Java Core","Spring Boot","Microservices","Kafka","Database & JPA","Design Patterns","Performance"];
+let selTopics=[...TOPICS];
+let questions=[],qIdx=0,answers=[],isSpeaking=false,isMicOn=false,isPaused=false;
+let timerInt=null,timeLeft=0,timeLimitSec=120;
+let finalText="",liveBubbleEl=null;
+// ── KEY: one stream, one recog instance ──
+let micStream=null;
+let recog=null;
+let recogActive=false;
+
+TOPICS.forEach(t=>{
+  const s=document.createElement("span");s.className="chip on";s.textContent=t;
+  s.onclick=()=>{if(selTopics.includes(t)){selTopics=selTopics.filter(x=>x!==t);s.classList.remove("on");}else{selTopics.push(t);s.classList.add("on");}};
+  document.getElementById("topicChips").appendChild(s);
+});
+
+const $=id=>document.getElementById(id);
+function showScreen(id){document.querySelectorAll(".screen").forEach(s=>s.classList.remove("active"));$(id).classList.add("active");}
+function setStatus(t){if($("statusBar"))$("statusBar").innerHTML=t;}
+function scrollChat(){const c=$("chat");if(c)c.scrollTop=c.scrollHeight;}
+function fmt(s){return `${Math.floor(s/60)}:${String(s%60).padStart(2,"0")}`;}
+function esc(s){return(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}
+function uname(){return $("cfgName")?.value||"Kamran";}
+function toggleKey(){const i=$("apiKey"),b=$("keyBtn");if(i.type==="password"){i.type="text";b.textContent="Hide";}else{i.type="password";b.textContent="Show";}}
+
+// ══ CHAT HELPERS ══
+function addEmily(text){
+  const d=document.createElement("div");d.className="msg";
+  d.innerHTML=`<div class="msg-row"><div class="msg-av">🤖</div><div><div class="msg-label">Emily</div><div class="bubble eb">${esc(text)}</div></div></div>`;
+  $("chat").appendChild(d);scrollChat();
+}
+function addUser(text){
+  const d=document.createElement("div");d.className="msg";
+  d.innerHTML=`<div class="msg-row right"><div class="msg-av ua">${esc(uname()[0].toUpperCase())}</div><div><div class="msg-label right">${esc(uname())}</div><div class="bubble ub">${esc(text)}</div></div></div>`;
+  $("chat").appendChild(d);scrollChat();
+}
+function addQ(q,n,tot){
+  const d=document.createElement("div");d.className="msg";
+  d.innerHTML=`<div class="msg-row"><div class="msg-av">🤖</div><div style="flex:1"><div class="msg-label">Emily · Q${n}/${tot}</div><div class="qb"><div class="qt">${esc(q.topic.toUpperCase())} · ${esc((q.difficulty||"medium").toUpperCase())}</div><div class="qq">${esc(q.question)}</div></div></div></div>`;
+  $("chat").appendChild(d);scrollChat();
+}
+function addHint(text){
+  const d=document.createElement("div");d.className="msg";
+  d.innerHTML=`<div class="hb">💡 <strong>Hint:</strong> ${esc(text)}</div>`;
+  $("chat").appendChild(d);scrollChat();
+}
+function addTyping(){
+  rmTyping();
+  const d=document.createElement("div");d.className="msg";d.id="typing";
+  d.innerHTML=`<div class="msg-row"><div class="msg-av">🤖</div><div><div class="msg-label">Emily</div><div class="td"><div class="dot" style="animation:bounce 1.2s 0s infinite"></div><div class="dot" style="animation:bounce 1.2s .2s infinite"></div><div class="dot" style="animation:bounce 1.2s .4s infinite"></div></div></div></div>`;
+  $("chat").appendChild(d);scrollChat();
+}
+function rmTyping(){const t=$("typing");if(t)t.remove();}
+function setLive(text){
+  if(!text){if(liveBubbleEl){liveBubbleEl.remove();liveBubbleEl=null;}return;}
+  if(!liveBubbleEl){
+    const d=document.createElement("div");d.className="msg";d.id="liveBubble";
+    d.innerHTML=`<div class="msg-row right"><div class="msg-av ua">${esc(uname()[0].toUpperCase())}</div><div><div class="msg-label right" style="color:#7c6df4">🎙️ Hearing you…</div><div class="bubble lb" id="liveTxt"></div></div></div>`;
+    $("chat").appendChild(d);liveBubbleEl=d;
+  }
+  const el=$("liveTxt");if(el)el.textContent=text;
+  scrollChat();
+}
+
+// ══ TTS ══
+function getVoice(){
+  const vs=window.speechSynthesis?.getVoices()||[];
+  for(const w of["Samantha","Google US English","Microsoft Zira","Karen","Moira"]){const v=vs.find(x=>x.name.includes(w));if(v)return v;}
+  return vs.find(v=>v.lang==="en-US")||vs[0]||null;
+}
+if(window.speechSynthesis)window.speechSynthesis.onvoiceschanged=()=>getVoice();
+
+function speak(text,cb){
+  const on=$("cfgVoice")?.checked;
+  if(!on||!window.speechSynthesis){if(cb)setTimeout(cb,100);return;}
+  window.speechSynthesis.cancel();
+  _pauseRecog();
+  const u=new SpeechSynthesisUtterance(text.replace(/[*#_`<>]/g,"").trim());
+  const v=getVoice();if(v)u.voice=v;
+  u.rate=1.0;u.pitch=1.05;u.volume=1;
+  isSpeaking=true;updateMicBtn();setStatus("🔊 Emily is speaking…");
+  u.onend=u.onerror=()=>{
+    isSpeaking=false;
+    if(!isPaused){_resumeRecog();setStatus("🎙️ Listening — speak your answer");}
+    updateMicBtn();if(cb)cb();
+  };
+  window.speechSynthesis.speak(u);
+}
+function cancelSpeech(){window.speechSynthesis?.cancel();isSpeaking=false;updateMicBtn();}
+
+// ══ MIC — TRULY PERSISTENT ══
+// Strategy: getUserMedia ONCE → hold micStream → SpeechRecognition reuses same permission
+// Chrome checks if a MediaStream is active; since we hold it, it reuses cached permission
+
+async function initMic(){
+  if(micStream)return true;
+  try{
+    micStream=await navigator.mediaDevices.getUserMedia({audio:true,video:false});
+    console.log("✅ Mic granted once — will not ask again");
+    return true;
+  }catch(e){
+    alert("Microphone denied.\n\nFix: Click 🔒 in Chrome address bar → Microphone → Allow → Reload.");
+    return false;
+  }
+}
+
+function buildRecog(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR)return null;
+  const r=new SR();
+  r.continuous=true;
+  r.interimResults=true;
+  // en-IN = Indian English — tuned for Indian pronunciation, accent, and vocabulary patterns
+  r.lang="en-IN";
+
+  r.onresult=(e)=>{
+    if(isSpeaking)return;
+    let fin="",inter="";
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      if(e.results[i].isFinal)fin+=e.results[i][0].transcript+" ";
+      else inter+=e.results[i][0].transcript;
+    }
+    if(fin)finalText+=fin;
+    const txt=(finalText+inter).trim();
+    const box=$("answerBox");if(box)box.value=txt;
+    setLive(txt||null);
+    const sb=$("submitBtn");
+    if(sb){sb.disabled=txt.length<3;sb.className="sub-btn"+(txt.length>=3?" ready":"");}
+  };
+
+  r.onerror=(e)=>{
+    recogActive=false;
+    if(e.error==="no-speech"||e.error==="aborted")return;
+    if(e.error==="not-allowed"){setStatus("❌ Mic blocked — click 🔒 address bar → Allow mic");return;}
+  };
+
+  // Auto-restart — micStream being alive means Chrome reuses permission, no popup
+  r.onend=()=>{
+    recogActive=false;
+    if(isMicOn&&!isSpeaking&&!isPaused){
+      setTimeout(()=>{
+        if(isMicOn&&!isSpeaking&&!isPaused){
+          try{r.start();recogActive=true;}catch(ex){}
+        }
+      },80);
+    }
+  };
+  return r;
+}
+
+function _pauseRecog(){
+  isMicOn=false;
+  if(recog&&recogActive){try{recog.stop();}catch(e){}}
+  const w=$("wave");if(w)w.style.display="none";
+  const b=$("answerBox");if(b)b.classList.remove("listening");
+  updateMicBtn();
+}
+function _resumeRecog(){
+  if(isPaused||isSpeaking)return;
+  finalText="";
+  const b=$("answerBox");if(b){b.value="";b.classList.add("listening");}
+  setLive(null);
+  isMicOn=true;
+  const w=$("wave");if(w)w.style.display="flex";
+  if(!recog)recog=buildRecog();
+  if(recog&&!recogActive){try{recog.start();recogActive=true;}catch(e){}}
+  updateMicBtn();
+}
+function startListening(){if(!isSpeaking&&!isPaused){_resumeRecog();setStatus("🎙️ Listening — speak your answer");}}
+function stopListening(){_pauseRecog();setStatus("Mic off — click mic button to listen");}
+function toggleMic(){if(isSpeaking)return;if(isMicOn)stopListening();else startListening();}
+function updateMicBtn(){
+  const b=$("micBtn");if(!b)return;
+  if(isSpeaking){b.className="mic-btn spk";b.textContent="🔊 Emily is speaking…";b.disabled=true;}
+  else if(isMicOn){b.className="mic-btn on";b.textContent="🔴 Listening — click to stop";b.disabled=false;}
+  else{b.className="mic-btn";b.textContent="🎙️ Start Listening";b.disabled=false;}
+}
+
+// ══ TIMER ══
+function startTimer(secs,onExp){
+  stopTimer();timeLeft=secs;
+  const el=$("timer");if(el){el.style.display="block";el.textContent=fmt(secs);el.className="timer";}
+  timerInt=setInterval(()=>{
+    timeLeft--;if(el)el.textContent=fmt(timeLeft);
+    if(timeLeft<=30&&el)el.className="timer warn";
+    if(timeLeft<=0){stopTimer();onExp();}
+  },1000);
+}
+function stopTimer(){clearInterval(timerInt);const el=$("timer");if(el){el.style.display="none";el.className="timer";}}
+
+// ══ GROQ API ══
+async function callAI(messages,maxTok=900){
+  const k=($("apiKey")?.value||"").trim();
+  if(!k)throw new Error("Please enter your Groq API key.");
+  const res=await fetch("https://api.groq.com/openai/v1/chat/completions",{
+    method:"POST",
+    headers:{"Content-Type":"application/json","Authorization":"Bearer "+k},
+    body:JSON.stringify({model:"llama-3.3-70b-versatile",max_tokens:maxTok,messages})
+  });
+  if(!res.ok){const e=await res.json();throw new Error(e.error?.message||"Groq error "+res.status);}
+  const d=await res.json();
+  return d.choices?.[0]?.message?.content||"";
+}
+
+// ══ INTERVIEW FLOW ══
+async function startInterview(){
+  if(!selTopics.length){alert("Select at least one topic!");return;}
+  const k=($("apiKey")?.value||"").trim();
+  if(!k){alert("Please enter your Groq API key.\n\nGet it free: console.groq.com → API Keys");return;}
+  const btn=$("startBtn");
+  btn.disabled=true;btn.innerHTML='<span class="sp"></span> Requesting mic…';
+  const ok=await initMic();
+  if(!ok){btn.disabled=false;btn.innerHTML='🎙️ &nbsp;Start Interview with Emily';return;}
+  if(!recog)recog=buildRecog();
+  btn.innerHTML='<span class="sp"></span> Generating questions…';
+  const n=uname(),diff=$("cfgDiff").value,num=parseInt($("cfgNum").value);
+  timeLimitSec=parseInt($("cfgTime").value);
+  const dMap={easy:"easy conceptual",medium:"intermediate practical",hard:"advanced senior-level",mixed:"a balanced mix of easy medium and hard"};
+  try{
+    const raw=await callAI([{role:"user",content:`Generate exactly ${num} unique ${dMap[diff]} Java/Spring Boot interview questions for EPAM prep.\nCandidate: ${n}, ${CAND.years}+ yrs, stack: ${CAND.stack}.\nTopics (spread evenly): ${selTopics.join(", ")}.\nPractical real-world questions only.\nReturn ONLY valid JSON array no markdown:\n[{"topic":"Spring Boot","difficulty":"medium","question":"...","hint":"..."}]`}],1500);
+    const qList=JSON.parse(raw.replace(/```json|```/g,"").trim());
+    questions=qList;qIdx=0;answers=[];
+    $("chat").innerHTML="";$("answerBox").value="";
+    $("qProgress").textContent=`Q 1 / ${qList.length}`;
+    $("pauseSub").textContent=`Question 1 of ${qList.length}`;
+    showScreen("interview");
+    btn.disabled=false;btn.innerHTML='🎙️ &nbsp;Start Interview with Emily';
+    const greet=`Hi ${n}! I'm Emily. We have ${qList.length} questions. Just speak after I ask each one — I'm always listening. Let's begin!`;
+    addEmily(greet);
+    speak(greet,()=>setTimeout(()=>askQ(0),300));
+  }catch(e){
+    btn.disabled=false;btn.innerHTML='🎙️ &nbsp;Start Interview with Emily';
+    alert("Error: "+e.message);
+  }
+}
+
+function askQ(idx){
+  if(idx>=questions.length){endInterview();return;}
+  const q=questions[idx];
+  $("qProgress").textContent=`Q ${idx+1} / ${questions.length}`;
+  $("pauseSub").textContent=`Question ${idx+1} of ${questions.length}`;
+  $("answerBox").value="";
+  const sb=$("submitBtn");if(sb){sb.disabled=true;sb.className="sub-btn";}
+  setLive(null);finalText="";
+  addQ(q,idx+1,questions.length);
+  const intro=idx===0?"Here's your first question.":`Question ${idx+1}.`;
+  speak(`${intro} Topic: ${q.topic}. ${q.question}`,()=>{
+    startListening();
+    if(timeLimitSec>0)startTimer(timeLimitSec,()=>{
+      const cur=$("answerBox").value.trim();
+      if(cur&&cur.length>3)doSubmit(cur);else dontKnow();
+    });
+  });
+}
+
+async function submitAnswer(){
+  const ans=$("answerBox").value.trim();
+  if(!ans||ans.length<3)return;
+  doSubmit(ans);
+}
+
+async function doSubmit(ans){
+  stopTimer();stopListening();cancelSpeech();
+  setLive(null);addUser(ans);
+  $("answerBox").value="";
+  const sb=$("submitBtn");if(sb){sb.disabled=true;sb.className="sub-btn";}
+  addTyping();setStatus("Evaluating…");disableCtrl(true);
+  try{
+    // CRITICAL PROMPT: short compliment if correct, feedback only if wrong/incomplete
+    const prompt=`You are Emily, a professional Java interview coach for EPAM prep.
+
+Question: ${questions[qIdx].question}
+Topic: ${questions[qIdx].topic}  
+Candidate answer: "${ans}"
+Candidate: ${CAND.years}+ years exp, ${CAND.stack}
+
+SCORING RULES — follow these exactly:
+- Score 5: Answer is complete and correct
+- Score 4: Answer is mostly correct with minor gaps  
+- Score 3: Partially correct, missing key parts
+- Score 2: Mostly wrong or very incomplete
+- Score 1: Wrong or didn't know
+
+RESPONSE RULES — follow these exactly:
+- If score is 4 or 5: Write ONE short sentence compliment only. Examples: "Spot on!", "Perfect, well done!", "Nailed it!", "Exactly right!", "Great answer!". NOTHING else. No explanation. No tips. No "however". Just the compliment.
+- If score is 1, 2, or 3: Write 2-3 sentences. Briefly say what was wrong or missing. Be kind but specific. No lengthy explanations.
+
+REQUIRED — always end with this exact tag on its own line:
+<!--SCORE:N-->
+(replace N with the number 1-5)`;
+
+    const raw=await callAI([{role:"user",content:prompt}]);
+    const meta=raw.match(/<!--SCORE:(\d)-->/);
+    const resp=raw.replace(/<!--.*?-->/gs,"").trim();
+    const sc=meta?parseInt(meta[1]):3;
+    answers.push({question:questions[qIdx],answer:ans,score:sc,feedback:resp});
+    rmTyping();addEmily(resp);setStatus("");disableCtrl(false);
+    const next=qIdx+1;qIdx=next;finalText="";
+    speak(resp,()=>setTimeout(()=>{if(next>=questions.length)endInterview();else askQ(next);},300));
+  }catch(e){
+    rmTyping();addEmily("Got it! Moving on.");setStatus("");disableCtrl(false);
+    answers.push({question:questions[qIdx],answer:ans,score:3,feedback:""});
+    const next=qIdx+1;qIdx=next;finalText="";
+    if(next>=questions.length)endInterview();else askQ(next);
+  }
+}
+
+async function dontKnow(){
+  stopTimer();stopListening();cancelSpeech();
+  setLive(null);addUser("I don't know the answer.");
+  $("answerBox").value="";
+  addTyping();setStatus("Emily is explaining…");disableCtrl(true);
+  answers.push({question:questions[qIdx],answer:"I don't know",score:1,feedback:""});
+  try{
+    const expl=await callAI([{role:"user",content:`You are Emily, a friendly interview coach. Candidate doesn't know:\n"${questions[qIdx].question}" (Topic: ${questions[qIdx].topic})\nExplain in 3-4 simple sentences. Start: "No problem — let me explain."`}]);
+    rmTyping();addEmily(expl);setStatus("");disableCtrl(false);
+    const next=qIdx+1;qIdx=next;finalText="";
+    speak(expl,()=>setTimeout(()=>{if(next>=questions.length)endInterview();else askQ(next);},300));
+  }catch(e){
+    rmTyping();addEmily("No worries! Moving on.");setStatus("");disableCtrl(false);
+    const next=qIdx+1;qIdx=next;
+    if(next>=questions.length)endInterview();else askQ(next);
+  }
+}
+
+function getHint(){
+  const q=questions[qIdx];if(!q)return;
+  const h=q.hint||"Think of a real example from your work.";
+  addHint(h);speak("Hint: "+h);
+}
+
+// ══ PAUSE / RESUME / STOP ══
+function pauseInterview(){
+  isPaused=true;stopTimer();cancelSpeech();stopListening();
+  setLive(null);$("pauseSub").textContent=`Question ${qIdx+1} of ${questions.length}`;
+  showScreen("paused");
+}
+function resumeInterview(){
+  isPaused=false;showScreen("interview");
+  const q=questions[qIdx];
+  if(q)speak(`Welcome back! Repeating the question. ${q.question}`,()=>{
+    startListening();
+    if(timeLimitSec>0)startTimer(timeLimitSec,()=>{const cur=$("answerBox").value.trim();if(cur&&cur.length>3)doSubmit(cur);else dontKnow();});
+  });
+}
+function stopInterview(){
+  isPaused=false;cancelSpeech();stopListening();stopTimer();
+  // Keep micStream alive so no re-prompt on new interview
+  questions=[];qIdx=0;answers=[];finalText="";
+  setLive(null);
+  if($("chat"))$("chat").innerHTML="";
+  if($("answerBox"))$("answerBox").value="";
+  const sb=$("submitBtn");if(sb){sb.disabled=true;sb.className="sub-btn";}
+  disableCtrl(false);updateMicBtn();
+  showScreen("setup");
+}
+
+// ══ REPORT ══
+async function endInterview(){
+  stopTimer();stopListening();cancelSpeech();
+  const avg=answers.length?answers.reduce((s,a)=>s+a.score,0)/answers.length:0;
+  const pct=Math.round((avg/5)*100);
+  const n=uname();
+  addEmily(`That's all ${n}! Great work. Preparing your report now.`);
+  speak(`Great job ${n}! Your report is being prepared.`);
+  showScreen("report");
+  $("reportCard").innerHTML='<div style="text-align:center;padding:48px 0"><div class="slg"></div><p style="color:var(--muted)">Generating your report…</p></div>';
+  try{
+    const raw=await callAI([{role:"user",content:`You are Emily, a professional interview coach. Summarize performance.\nCandidate: ${n}, ${CAND.years} yrs, ${CAND.stack}\nResults: ${JSON.stringify(answers.map(a=>({topic:a.question.topic,score:a.score,feedback:a.feedback})))}\nReturn ONLY valid JSON no markdown:\n{"summary":"2-3 sentences","focusAreas":[{"topic":"...","reason":"...","action":"..."}],"strengths":["..."],"nextSteps":"1-2 sentences EPAM advice"}`}],1000);
+    renderReport(JSON.parse(raw.replace(/```json|```/g,"").trim()),pct,avg);
+  }catch(e){
+    renderReport({summary:`Completed ${answers.length} questions, avg ${avg.toFixed(1)}/5.`,focusAreas:[],strengths:[],nextSteps:"Keep practicing!"},pct,avg);
+  }
+}
+
+function renderReport(rep,pct,avg){
+  const col=pct>=70?"#10b981":pct>=40?"#f59e0b":"#ef4444";
+  let h=`<div style="text-align:center;margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid var(--border)">
+    <div class="sr" style="background:conic-gradient(${col} ${pct*3.6}deg,var(--border) 0deg)"><div class="si">${pct}%</div></div>
+    <div style="font-family:'DM Serif Display',serif;font-size:26px;margin-bottom:4px">Interview Complete! 🎉</div>
+    <div style="color:var(--muted);font-size:13px">Avg: ${avg.toFixed(1)} / 5.0</div></div>
+    <div style="margin-bottom:20px"><div class="stl">Overall</div><p style="font-size:14px;line-height:1.8;color:var(--soft)">${esc(rep.summary)}</p></div>`;
+  if(rep.strengths?.length){h+=`<div style="margin-bottom:20px"><div class="stl">✅ Strengths</div>`;rep.strengths.forEach(s=>{h+=`<div style="padding:9px 13px;border-radius:9px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);margin-bottom:7px;font-size:13px;color:var(--green)">✓ ${esc(s)}</div>`;});h+=`</div>`;}
+  if(rep.focusAreas?.length){h+=`<div style="margin-bottom:20px"><div class="stl">📌 Focus Areas</div>`;rep.focusAreas.forEach(f=>{h+=`<div style="display:flex;gap:11px;padding:12px;border-radius:9px;border:1px solid var(--border);background:var(--bg);margin-bottom:8px;font-size:13px;line-height:1.6"><span style="font-size:17px;flex-shrink:0">🎯</span><div><div style="color:#a78bfa;font-weight:600">${esc(f.topic)}</div><div style="color:var(--muted)">${esc(f.reason)}</div><div style="color:var(--green);font-size:12px;font-style:italic">Action: ${esc(f.action)}</div></div></div>`;});h+=`</div>`;}
+  if(rep.nextSteps)h+=`<div style="background:rgba(124,109,244,.08);border:1px solid rgba(124,109,244,.2);border-radius:10px;padding:13px;font-size:14px;color:#a78bfa;line-height:1.7;margin-bottom:24px">🚀 ${esc(rep.nextSteps)}</div>`;
+  h+=`<button class="nb" onclick="stopInterview()">🔄 Start New Interview</button>`;
+  $("reportCard").innerHTML=h;
+}
+function disableCtrl(on){["hintBtn","dkBtn"].forEach(id=>{const e=$(id);if(e)e.disabled=on;});}
+</script>
+</body>
+</html>
