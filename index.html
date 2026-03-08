@@ -100,6 +100,8 @@ select option{background:#0f1420}
 .profile-check{margin-left:auto;color:#a78bfa;font-weight:700;font-size:14px;flex-shrink:0}
 .status{text-align:center;font-size:11px;color:var(--muted);margin-top:8px;font-family:'DM Mono',monospace;min-height:16px}
 #report{flex-direction:column;align-items:center;padding:36px 16px;overflow-y:auto;background:var(--bg)}
+#interview-canvas{display:none}
+#interview.active #interview-canvas{display:block}
 .rc{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:32px;max-width:620px;width:100%}
 .sr{width:96px;height:96px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;position:relative}
 .si{width:70px;height:70px;border-radius:50%;background:var(--surface);position:absolute;display:flex;align-items:center;justify-content:center;font-family:'DM Serif Display',serif;font-size:20px}
@@ -130,9 +132,10 @@ select option{background:#0f1420}
   <div class="hud-corner hud-tl"></div><div class="hud-corner hud-tr"></div>
   <div class="hud-corner hud-bl"></div><div class="hud-corner hud-br"></div>
   <!-- Developer credit corner -->
-  <div style="position:fixed;bottom:14px;right:18px;z-index:20;font-family:'DM Mono',monospace;font-size:10px;color:rgba(124,109,244,0.5);letter-spacing:1px;text-align:right;pointer-events:none;line-height:1.5">
-    <div style="color:rgba(124,109,244,0.3);font-size:9px;letter-spacing:2px;text-transform:uppercase">Developed by</div>
-    <div style="color:rgba(168,85,247,0.7);font-size:11px;font-weight:500;letter-spacing:1.5px">Kamran Ahmed</div>
+  <div style="position:fixed;bottom:18px;right:20px;z-index:20;font-family:'DM Mono',monospace;text-align:right;pointer-events:none;line-height:1.6">
+    <div style="font-size:9px;letter-spacing:3px;text-transform:uppercase;color:rgba(124,109,244,0.6);margin-bottom:2px">Developed by</div>
+    <div style="font-size:15px;font-weight:700;letter-spacing:2px;background:linear-gradient(90deg,#a78bfa,#60a5fa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;text-shadow:none;filter:drop-shadow(0 0 8px rgba(124,109,244,0.6))">Kamran Ahmed</div>
+    <div style="font-size:9px;color:rgba(124,109,244,0.4);letter-spacing:1px;margin-top:1px">AI Interview Coach</div>
   </div>
   <div class="setup-content">
     <div class="avatar-wrap">
@@ -167,7 +170,7 @@ select option{background:#0f1420}
           <div class="profile-card" data-profile="powerbi" onclick="selectProfile('powerbi')">
             <div style="display:flex;align-items:center;gap:10px">
               <span style="font-size:22px">📈</span>
-              <div><div style="font-weight:600;font-size:13px;color:var(--text)">Power BI / BI Analyst</div><div style="font-size:11px;color:var(--soft)">DAX · Power Query · Data Modelling · SQL</div></div>
+              <div><div style="font-weight:600;font-size:13px;color:var(--text)">BI Developer</div><div style="font-size:11px;color:var(--soft)">DAX · Power Query · Data Modelling · SQL</div></div>
               <div class="profile-check" id="check_powerbi" style="display:none">✓</div>
             </div>
           </div>
@@ -178,9 +181,16 @@ select option{background:#0f1420}
               <div class="profile-check" id="check_gcpde" style="display:none">✓</div>
             </div>
           </div>
+          <div class="profile-card" data-profile="frontend" onclick="selectProfile('frontend')">
+            <div style="display:flex;align-items:center;gap:10px">
+              <span style="font-size:22px">🎨</span>
+              <div><div style="font-weight:600;font-size:13px;color:var(--text)">Frontend Developer</div><div style="font-size:11px;color:var(--soft)">React · TypeScript · Next.js · CSS · Performance</div></div>
+              <div class="profile-check" id="check_frontend" style="display:none">✓</div>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="field"><label>Your Name</label><input id="cfgName" type="text" value="Kamran"/></div>
+      <div class="field"><label>Your Name</label><input id="cfgName" type="text" placeholder="Enter your name" /></div>
       <div class="field"><label>Difficulty</label>
         <select id="cfgDiff">
           <option value="mixed">Mixed (Easy + Medium + Hard)</option>
@@ -213,9 +223,25 @@ select option{background:#0f1420}
           <div style="margin-top:8px;font-size:11px;color:var(--muted);display:flex;align-items:center;gap:5px;">🔒 Key stays in your browser only — never sent anywhere else</div>
         </div>
       </div>
-      <div class="voice-row">
-        <input type="checkbox" id="cfgVoice" checked/>
-        <label for="cfgVoice">Enable Emily's voice (Chrome recommended)</label>
+      <div class="field">
+        <label>AI Voice</label>
+        <div style="display:flex;gap:8px">
+          <div class="voice-card active" id="voiceCard_emily" onclick="selectVoice('emily')" style="flex:1;padding:10px 12px;border-radius:10px;border:1.5px solid rgba(124,109,244,0.6);background:rgba(124,109,244,0.1);cursor:pointer;text-align:center;transition:all .2s">
+            <div style="font-size:20px;margin-bottom:3px">🤖</div>
+            <div style="font-size:12px;font-weight:700;color:#a78bfa">Emily</div>
+            <div style="font-size:10px;color:var(--muted)">Female · Warm</div>
+          </div>
+          <div class="voice-card" id="voiceCard_jarvis" onclick="selectVoice('jarvis')" style="flex:1;padding:10px 12px;border-radius:10px;border:1.5px solid rgba(30,38,64,1);background:rgba(8,11,20,0.6);cursor:pointer;text-align:center;transition:all .2s">
+            <div style="font-size:20px;margin-bottom:3px">🦾</div>
+            <div style="font-size:12px;font-weight:700;color:var(--soft)">Jarvis</div>
+            <div style="font-size:10px;color:var(--muted)">Male · Deep</div>
+          </div>
+          <div class="voice-card" id="voiceCard_off" onclick="selectVoice('off')" style="flex:1;padding:10px 12px;border-radius:10px;border:1.5px solid rgba(30,38,64,1);background:rgba(8,11,20,0.6);cursor:pointer;text-align:center;transition:all .2s">
+            <div style="font-size:20px;margin-bottom:3px">🔇</div>
+            <div style="font-size:12px;font-weight:700;color:var(--soft)">Off</div>
+            <div style="font-size:10px;color:var(--muted)">Text only</div>
+          </div>
+        </div>
       </div>
       <div id="historyBadge" style="display:none;text-align:center;margin-bottom:10px;font-size:11px;color:rgba(124,109,244,0.7);font-family:'DM Mono',monospace;padding:6px 12px;background:rgba(124,109,244,0.06);border-radius:7px;border:1px solid rgba(124,109,244,0.15)">
         🗂️ <span id="historyCount">0</span> questions on file for <span id="historyName">you</span> — Emily won't repeat them
@@ -239,6 +265,8 @@ select option{background:#0f1420}
 
 <!-- ══ INTERVIEW ══ -->
 <div id="interview" class="screen">
+  <canvas id="interview-canvas" style="position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;opacity:0.4"></canvas>
+  <div style="position:relative;z-index:1;display:flex;flex-direction:column;height:100vh;overflow:hidden;width:100%">
   <div class="topbar">
     <div style="display:flex;align-items:center;gap:10px">
       <div class="mini-avatar">🤖</div>
@@ -274,6 +302,7 @@ select option{background:#0f1420}
     <div class="status" id="statusBar"></div>
   </div>
 </div>
+  </div>
 
 <!-- ══ REPORT ══ -->
 <div id="report" class="screen">
@@ -307,6 +336,64 @@ select option{background:#0f1420}
   setInterval(()=>{const p=document.createElement('div');p.className='particle';p.style.cssText=`left:${Math.random()*100}%;top:${80+Math.random()*20}%;animation-duration:${6+Math.random()*8}s;animation-delay:${Math.random()*4}s`;document.getElementById('setup').appendChild(p);setTimeout(()=>p.remove(),14000);},600);
 })();
 
+// ══ INTERVIEW BACKGROUND — circuit/matrix style ══
+(function(){
+  function initInterviewBg(){
+    const cv = document.getElementById('interview-canvas');
+    if(!cv) return;
+    const ctx = cv.getContext('2d');
+    let W, H, cols, drops=[], fontSize=13;
+    const chars = "01アイウエオカキクケコBINARY><{}[]|/\\#@$%";
+    const colors = ["rgba(124,109,244,","rgba(168,85,247,","rgba(6,182,212,","rgba(16,185,129,"];
+
+    function resize(){
+      W = cv.width = window.innerWidth;
+      H = cv.height = window.innerHeight;
+      cols = Math.floor(W / fontSize);
+      drops = Array(cols).fill(0).map(() => Math.random() * -H/fontSize);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // grid lines
+    function drawGrid(){
+      ctx.strokeStyle = 'rgba(124,109,244,0.04)';
+      ctx.lineWidth = 0.5;
+      for(let x=0;x<W;x+=60){ ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke(); }
+      for(let y=0;y<H;y+=60){ ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke(); }
+    }
+
+    function draw(){
+      ctx.fillStyle = 'rgba(8,11,20,0.08)';
+      ctx.fillRect(0,0,W,H);
+      drawGrid();
+      drops.forEach((y,i)=>{
+        const char = chars[Math.floor(Math.random()*chars.length)];
+        const col = colors[Math.floor(Math.random()*colors.length)];
+        const alpha = Math.random()*0.4+0.1;
+        ctx.fillStyle = col+alpha+')';
+        ctx.font = fontSize+'px "DM Mono",monospace';
+        ctx.fillText(char, i*fontSize, y*fontSize);
+        if(y*fontSize > H && Math.random() > 0.975) drops[i] = 0;
+        drops[i] += 0.4;
+      });
+    }
+
+    let animId;
+    function start(){ if(!animId){ (function loop(){ draw(); animId=requestAnimationFrame(loop); })(); } }
+    function stop(){ if(animId){ cancelAnimationFrame(animId); animId=null; ctx.clearRect(0,0,W,H); } }
+
+    // Watch for screen changes
+    const observer = new MutationObserver(()=>{
+      const iv = document.getElementById('interview');
+      if(iv && iv.classList.contains('active')) start(); else stop();
+    });
+    observer.observe(document.body, {subtree:true, attributes:true, attributeFilter:['class']});
+  }
+  document.addEventListener('DOMContentLoaded', initInterviewBg);
+  initInterviewBg();
+})();
+
 // ══ SETUP ══
 const PROFILES = {
   backend: {
@@ -320,7 +407,7 @@ const PROFILES = {
     topics: ["Python & PySpark","SQL & Query Optimization","ETL & Pipelines","Data Warehousing","Big Data (Hadoop/Spark)","Cloud Data Services","Data Modelling"]
   },
   powerbi: {
-    label: "📈 Power BI / BI Analyst",
+    label: "📈 BI Developer",
     stack: "Power BI, DAX, Power Query, SQL, Excel, Data Modelling, Azure",
     topics: ["DAX & Measures","Power Query (M)","Data Modelling","Report & Visuals","Row-Level Security","Performance Optimization","SQL for BI"]
   },
@@ -328,6 +415,11 @@ const PROFILES = {
     label: "☁️ GCP Data Engineer",
     stack: "BigQuery, Dataflow, Pub/Sub, Dataproc, Cloud Storage, Cloud Composer, Looker, dbt, Apache Beam, IAM",
     topics: ["BigQuery & SQL","Dataflow & Apache Beam","Pub/Sub & Streaming","Dataproc & Spark on GCP","Cloud Storage & IAM","Cloud Composer & Airflow","dbt & Data Transformation"]
+  },
+  frontend: {
+    label: "🎨 Frontend Developer",
+    stack: "JavaScript, TypeScript, React, Next.js, CSS, HTML, REST APIs, Performance, Testing",
+    topics: ["JavaScript & TypeScript","React & Hooks","Next.js & SSR","CSS & Responsive Design","Browser & DOM","Performance & Optimization","Testing & Debugging"]
   }
 };
 let activeProfile = "backend";
@@ -473,21 +565,49 @@ function setLive(text){
 }
 
 // ══ TTS ══
+let activeVoice = "emily"; // emily | jarvis | off
+
+function selectVoice(v){
+  activeVoice = v;
+  ["emily","jarvis","off"].forEach(id=>{
+    const card = document.getElementById("voiceCard_"+id);
+    if(!card) return;
+    const isActive = id === v;
+    card.style.border = isActive ? "1.5px solid rgba(124,109,244,0.7)" : "1.5px solid rgba(30,38,64,1)";
+    card.style.background = isActive ? "rgba(124,109,244,0.1)" : "rgba(8,11,20,0.6)";
+    const nameEl = card.querySelector("div:nth-child(2)");
+    if(nameEl) nameEl.style.color = isActive ? "#a78bfa" : "var(--soft)";
+  });
+  // Update topbar avatar emoji
+  const av = document.querySelector(".mini-avatar");
+  if(av) av.textContent = v === "jarvis" ? "🦾" : "🤖";
+}
+
 function getVoice(){
   const vs=window.speechSynthesis?.getVoices()||[];
+  if(activeVoice === "jarvis"){
+    // Deep male voices for Jarvis
+    for(const w of["Google UK English Male","Microsoft David","Daniel","Alex","Fred","Google US English Male"]){
+      const v=vs.find(x=>x.name.includes(w));if(v)return v;
+    }
+    // Fallback: any male-ish voice
+    return vs.find(v=>v.lang==="en-GB")||vs.find(v=>v.lang==="en-US")||vs[0]||null;
+  }
+  // Emily - female warm voice
   for(const w of["Samantha","Google US English","Microsoft Zira","Karen","Moira"]){const v=vs.find(x=>x.name.includes(w));if(v)return v;}
   return vs.find(v=>v.lang==="en-US")||vs[0]||null;
 }
 if(window.speechSynthesis)window.speechSynthesis.onvoiceschanged=()=>getVoice();
 
 function speak(text,cb){
-  const on=$("cfgVoice")?.checked;
-  if(!on||!window.speechSynthesis){if(cb)setTimeout(cb,100);return;}
+  if(activeVoice==="off"||!window.speechSynthesis){if(cb)setTimeout(cb,100);return;}
   window.speechSynthesis.cancel();
   _pauseRecog();
   const u=new SpeechSynthesisUtterance(text.replace(/[*#_`<>]/g,"").trim());
   const v=getVoice();if(v)u.voice=v;
-  u.rate=1.0;u.pitch=1.05;u.volume=1;
+  // Jarvis: slightly lower pitch and slower pace
+  if(activeVoice==="jarvis"){ u.rate=0.92; u.pitch=0.75; u.volume=1; }
+  else { u.rate=1.0; u.pitch=1.05; u.volume=1; }
   isSpeaking=true;updateMicBtn();setStatus("🔊 Emily is speaking…");
   u.onend=u.onerror=()=>{
     isSpeaking=false;
