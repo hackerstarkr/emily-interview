@@ -198,7 +198,7 @@ select option{background:#0f1420}
         </select>
       </div>
       <div class="field"><label>Questions</label>
-        <select id="cfgNum"><option value="4">4</option><option value="6" selected>6</option><option value="8">8</option><option value="10">10</option></select>
+        <select id="cfgNum"><option value="2">2</option><option value="4">4</option><option value="6" selected>6</option><option value="8">8</option><option value="10">10</option><option value="15">15</option><option value="20">20</option></select>
       </div>
       <div class="field"><label>Time per Question</label>
         <select id="cfgTime"><option value="0">No limit</option><option value="90">90 sec</option><option value="120" selected>2 min</option><option value="180">3 min</option></select>
@@ -271,7 +271,7 @@ select option{background:#0f1420}
     <div style="display:flex;align-items:center;gap:10px">
       <div class="mini-avatar">🤖</div>
       <div>
-        <div style="font-family:'DM Serif Display',serif;font-size:15px">Emily</div>
+        <div style="font-family:'DM Serif Display',serif;font-size:15px" id="topbarAgentName">Emily</div>
         <div id="qProgress" style="font-size:11px;color:var(--muted)">Q 1 / 6</div>
       </div>
     </div>
@@ -409,7 +409,7 @@ const PROFILES = {
   powerbi: {
     label: "📈 BI Developer",
     stack: "Power BI, DAX, Power Query, SQL, Excel, Data Modelling, Azure",
-    topics: ["DAX & Measures","Power Query (M)","Data Modelling","Report & Visuals","Row-Level Security","Performance Optimization","SQL for BI"]
+    topics: ["DAX & Measures","Power Query (M)","Data Modelling","Report & Visuals","Row-Level Security","SAP Sapphire & BI Tools","SQL for BI"]
   },
   gcpde: {
     label: "☁️ GCP Data Engineer",
@@ -578,26 +578,42 @@ function selectVoice(v){
     const nameEl = card.querySelector("div:nth-child(2)");
     if(nameEl) nameEl.style.color = isActive ? "#a78bfa" : "var(--soft)";
   });
-  // Update topbar avatar emoji
+  // Update topbar avatar + name
   const av = document.querySelector(".mini-avatar");
   if(av) av.textContent = v === "jarvis" ? "🦾" : "🤖";
+  const tn = document.getElementById("topbarAgentName");
+  if(tn) tn.textContent = v === "jarvis" ? "Jarvis" : v === "off" ? "Coach" : "Emily";
+}
+
+// ── VOICE: Mobile-safe with async voice loading ──
+let _voicesLoaded = false;
+let _voiceList = [];
+
+function _loadVoices(){
+  _voiceList = window.speechSynthesis?.getVoices() || [];
+  if(_voiceList.length > 0) _voicesLoaded = true;
+}
+if(window.speechSynthesis){
+  window.speechSynthesis.onvoiceschanged = _loadVoices;
+  _loadVoices(); // also try immediately (desktop loads sync)
 }
 
 function getVoice(){
-  const vs=window.speechSynthesis?.getVoices()||[];
+  _loadVoices(); // refresh if not loaded yet
+  const vs = _voiceList.length ? _voiceList : (window.speechSynthesis?.getVoices()||[]);
   if(activeVoice === "jarvis"){
-    // Deep male voices for Jarvis
-    for(const w of["Google UK English Male","Microsoft David","Daniel","Alex","Fred","Google US English Male"]){
-      const v=vs.find(x=>x.name.includes(w));if(v)return v;
+    for(const w of["Google UK English Male","Microsoft David","Daniel","Alex","Fred","Google US English Male","en-GB","en-AU"]){
+      const v=vs.find(x=>x.name.includes(w)||x.lang===w);if(v)return v;
     }
-    // Fallback: any male-ish voice
-    return vs.find(v=>v.lang==="en-GB")||vs.find(v=>v.lang==="en-US")||vs[0]||null;
+    // Any male sounding: prefer en-GB, then en-AU, then any en
+    return vs.find(v=>v.lang==="en-GB") || vs.find(v=>v.lang==="en-AU") || vs.find(v=>v.lang.startsWith("en")) || vs[0] || null;
   }
-  // Emily - female warm voice
-  for(const w of["Samantha","Google US English","Microsoft Zira","Karen","Moira"]){const v=vs.find(x=>x.name.includes(w));if(v)return v;}
-  return vs.find(v=>v.lang==="en-US")||vs[0]||null;
+  // Emily — female warm
+  for(const w of["Samantha","Google US English","Microsoft Zira","Karen","Moira","Tessa","Victoria"]){
+    const v=vs.find(x=>x.name.includes(w));if(v)return v;
+  }
+  return vs.find(v=>v.lang==="en-US") || vs.find(v=>v.lang.startsWith("en")) || vs[0] || null;
 }
-if(window.speechSynthesis)window.speechSynthesis.onvoiceschanged=()=>getVoice();
 
 function speak(text,cb){
   if(activeVoice==="off"||!window.speechSynthesis){if(cb)setTimeout(cb,100);return;}
@@ -608,13 +624,25 @@ function speak(text,cb){
   // Jarvis: slightly lower pitch and slower pace
   if(activeVoice==="jarvis"){ u.rate=0.92; u.pitch=0.75; u.volume=1; }
   else { u.rate=1.0; u.pitch=1.05; u.volume=1; }
-  isSpeaking=true;updateMicBtn();setStatus("🔊 Emily is speaking…");
-  u.onend=u.onerror=()=>{
-    isSpeaking=false;
-    if(!isPaused){_resumeRecog();setStatus("🎙️ Listening — speak your answer");}
-    updateMicBtn();if(cb)cb();
-  };
-  window.speechSynthesis.speak(u);
+  isSpeaking=true;updateMicBtn();
+  setStatus(activeVoice==="jarvis"?"🔊 Jarvis is speaking…":"🔊 Emily is speaking…");
+  // Mobile: cancel any stuck utterance then speak
+  window.speechSynthesis.cancel();
+  setTimeout(()=>{
+    window.speechSynthesis.speak(u);
+    // Mobile keep-alive: browsers (esp. Android/iOS) pause TTS after ~15s
+    // Periodically call resume() to prevent it dying mid-sentence
+    const keepAlive = setInterval(()=>{
+      if(!isSpeaking){ clearInterval(keepAlive); return; }
+      if(window.speechSynthesis.paused) window.speechSynthesis.resume();
+    }, 5000);
+    u.onend=u.onerror=()=>{
+      clearInterval(keepAlive);
+      isSpeaking=false;
+      if(!isPaused){_resumeRecog();setStatus("🎙️ Listening — speak your answer");}
+      updateMicBtn();if(cb)cb();
+    };
+  }, 50);
 }
 function cancelSpeech(){window.speechSynthesis?.cancel();isSpeaking=false;updateMicBtn();}
 
@@ -780,7 +808,8 @@ Return ONLY valid JSON array, no markdown, no explanation:
     $("pauseSub").textContent=`Question 1 of ${qList.length}`;
     showScreen("interview");
     btn.disabled=false;btn.innerHTML='🎙️ &nbsp;Start Interview with Emily';
-    const greet=`Hi ${n}! I'm Emily. We have ${qList.length} questions. Just speak after I ask each one — I'm always listening. Let's begin!`;
+    const agentName = activeVoice === "jarvis" ? "Jarvis" : "Emily";
+    const greet=`Hi ${n}! I'm ${agentName}. We have ${qList.length} questions. Just speak after I ask each one — I'm always listening. Let's begin!`;
     addEmily(greet);
     speak(greet,()=>setTimeout(()=>askQ(0),300));
   }catch(e){
