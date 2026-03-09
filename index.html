@@ -190,7 +190,7 @@ select option{background:#0f1420}
           </div>
         </div>
       </div>
-      <div class="field"><label>Your Name</label><input id="cfgName" type="text" placeholder="Enter your name" /></div>
+      <div class="field"><label>Your Name</label><input id="cfgName" type="text" placeholder="Enter your name *" required style="border-color:rgba(124,109,244,0.2)" oninput="validateName()"/></div>
       <div class="field"><label>Difficulty</label>
         <select id="cfgDiff">
           <option value="mixed">Mixed (Easy + Medium + Hard)</option>
@@ -484,6 +484,14 @@ function renderTopicChips(){
 }
 
 // Update history badge when name changes
+function validateName(){
+  const inp = document.getElementById("cfgName");
+  if(!inp) return;
+  const val = inp.value.trim();
+  inp.style.borderColor = val ? "rgba(16,185,129,0.5)" : "rgba(239,68,68,0.5)";
+  inp.placeholder = val ? "Enter your name *" : "⚠️ Name is required";
+}
+
 function updateHistoryBadge(){
   const n=(document.getElementById('cfgName')?.value||'').trim();
   const profileLabel = PROFILES[activeProfile]?.label || '';
@@ -771,6 +779,13 @@ async function callAI(messages,maxTok=900){
 async function startInterview(){
   if(!selTopics.length){alert("Select at least one topic!");return;}
   const k=($("apiKey")?.value||"").trim();
+  const nm = ($("cfgName")?.value||"").trim();
+  if(!nm){ 
+    $("cfgName").style.borderColor="rgba(239,68,68,0.7)";
+    $("cfgName").focus();
+    $("cfgName").placeholder="⚠️ Name is required";
+    return; 
+  }
   if(!k){alert("Please enter your Groq API key.\n\nGet it free: console.groq.com → API Keys");return;}
   const btn=$("startBtn");
   btn.disabled=true;btn.innerHTML='<span class="sp"></span> Requesting mic…';
@@ -996,6 +1011,96 @@ async function endInterview(){
   }
 }
 
+// ── ANSWER REVIEW: Show correct answers for questions scored 1-3 ──
+let reviewMode = false;
+
+async function showAnswerReview(){
+  const wrong = answers.filter(a => a.score <= 3);
+  if(!wrong.length){ alert("You answered everything correctly — no mistakes to review! 🎉"); return; }
+
+  const rc = $("reportCard");
+  rc.innerHTML = '<div style="text-align:center;padding:40px 0"><div class="slg"></div><p style="color:var(--muted)">Generating model answers for your missed questions…</p></div>';
+
+  try{
+    const questionsForReview = wrong.map((a,i) =>
+      `Q${i+1}. [${a.question.topic}] ${a.question.question}\nYour answer: "${a.answer}"\nScore: ${a.score}/5`
+    ).join("\n\n");
+
+    const raw = await callAI([{role:"user", content:`You are a senior technical interview coach.
+The candidate answered these questions incorrectly or partially. For each question, provide the ideal model answer.
+
+${questionsForReview}
+
+Rules:
+- Give a clear, comprehensive but concise model answer for each question (3-6 sentences)
+- Point out what the candidate missed in 1 sentence
+- Be encouraging and constructive
+- Use simple language, no jargon overload
+
+Return ONLY valid JSON array, no markdown:
+[{"question":"...","topic":"...","candidateAnswer":"...","missed":"...","modelAnswer":"..."}]`}], 2000);
+
+    const items = JSON.parse(raw.replace(/\`\`\`json|\`\`\`/g,"").trim());
+    renderReview(items);
+  } catch(e){
+    // Fallback: show without AI-generated answers
+    const items = wrong.map(a=>({
+      question: a.question.question,
+      topic: a.question.topic,
+      candidateAnswer: a.answer,
+      missed: "Review the core concepts for this topic.",
+      modelAnswer: a.question.hint || "Study this topic further and review official documentation."
+    }));
+    renderReview(items);
+  }
+}
+
+function renderReview(items){
+  const rc = $("reportCard");
+  let h = `<div style="margin-bottom:24px;padding-bottom:16px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px">
+    <div style="font-size:28px">📖</div>
+    <div>
+      <div style="font-family:'DM Serif Display',serif;font-size:22px">Missed Questions Review</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:2px">${items.length} question${items.length>1?'s':''} to study</div>
+    </div>
+  </div>`;
+
+  items.forEach((item, i) => {
+    h += `<div style="margin-bottom:20px;border:1px solid var(--border);border-radius:14px;overflow:hidden">
+      <div style="background:rgba(124,109,244,0.08);padding:12px 16px;border-bottom:1px solid var(--border)">
+        <div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--accent);letter-spacing:1px;margin-bottom:4px">Q${i+1} · ${esc(item.topic?.toUpperCase()||'')}</div>
+        <div style="font-size:14px;font-weight:600;color:var(--text);line-height:1.5">${esc(item.question)}</div>
+      </div>
+      <div style="padding:14px 16px">
+        <div style="margin-bottom:12px">
+          <div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--red);letter-spacing:1px;margin-bottom:5px">YOUR ANSWER</div>
+          <div style="font-size:13px;color:var(--muted);line-height:1.6;padding:9px 12px;background:rgba(239,68,68,0.05);border-radius:8px;border-left:3px solid rgba(239,68,68,0.4)">${esc(item.candidateAnswer)}</div>
+        </div>
+        <div style="margin-bottom:12px">
+          <div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--yellow);letter-spacing:1px;margin-bottom:5px">WHAT YOU MISSED</div>
+          <div style="font-size:13px;color:#fcd34d;line-height:1.6;padding:9px 12px;background:rgba(245,158,11,0.06);border-radius:8px;border-left:3px solid rgba(245,158,11,0.4)">${esc(item.missed)}</div>
+        </div>
+        <div>
+          <div style="font-size:10px;font-family:'DM Mono',monospace;color:var(--green);letter-spacing:1px;margin-bottom:5px">✅ MODEL ANSWER</div>
+          <div style="font-size:13px;color:#6ee7b7;line-height:1.7;padding:9px 12px;background:rgba(16,185,129,0.06);border-radius:8px;border-left:3px solid rgba(16,185,129,0.5)">${esc(item.modelAnswer)}</div>
+        </div>
+      </div>
+    </div>`;
+  });
+
+  h += `<div style="display:flex;gap:10px;margin-top:8px">
+    <button class="nb" style="flex:1;background:rgba(124,109,244,0.15);border:1.5px solid rgba(124,109,244,0.4);color:#a78bfa" onclick="showReport()">← Back to Report</button>
+    <button class="nb" style="flex:1" onclick="stopInterview()">🔄 New Interview</button>
+  </div>`;
+
+  rc.innerHTML = h;
+}
+
+let _lastReportArgs = null;
+function showReport(){
+  if(_lastReportArgs) renderReport(..._lastReportArgs);
+}
+
 function renderReport(rep,pct,avg){
   const col=pct>=70?"#10b981":pct>=40?"#f59e0b":"#ef4444";
   let h=`<div style="text-align:center;margin-bottom:24px;padding-bottom:24px;border-bottom:1px solid var(--border)">
@@ -1006,8 +1111,15 @@ function renderReport(rep,pct,avg){
   if(rep.strengths?.length){h+=`<div style="margin-bottom:20px"><div class="stl">✅ Strengths</div>`;rep.strengths.forEach(s=>{h+=`<div style="padding:9px 13px;border-radius:9px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);margin-bottom:7px;font-size:13px;color:var(--green)">✓ ${esc(s)}</div>`;});h+=`</div>`;}
   if(rep.focusAreas?.length){h+=`<div style="margin-bottom:20px"><div class="stl">📌 Focus Areas</div>`;rep.focusAreas.forEach(f=>{h+=`<div style="display:flex;gap:11px;padding:12px;border-radius:9px;border:1px solid var(--border);background:var(--bg);margin-bottom:8px;font-size:13px;line-height:1.6"><span style="font-size:17px;flex-shrink:0">🎯</span><div><div style="color:#a78bfa;font-weight:600">${esc(f.topic)}</div><div style="color:var(--muted)">${esc(f.reason)}</div><div style="color:var(--green);font-size:12px;font-style:italic">Action: ${esc(f.action)}</div></div></div>`;});h+=`</div>`;}
   if(rep.nextSteps)h+=`<div style="background:rgba(124,109,244,.08);border:1px solid rgba(124,109,244,.2);border-radius:10px;padding:13px;font-size:14px;color:#a78bfa;line-height:1.7;margin-bottom:24px">🚀 ${esc(rep.nextSteps)}</div>`;
-  h+=`<button class="nb" onclick="stopInterview()">🔄 Start New Interview</button>`;
+  h+=`<div style="display:flex;gap:10px;margin-top:4px">
+    <button class="nb" style="flex:1" onclick="stopInterview()">🔄 New Interview</button>
+    <button class="nb" id="reviewBtn" style="flex:1;background:rgba(239,68,68,0.1);border:1.5px solid rgba(239,68,68,0.4);color:#fca5a5" onclick="showAnswerReview()">📖 Review Mistakes</button>
+  </div>`;
+  // Hide review button if no wrong answers
+  const wrongCount = answers.filter(a=>a.score<=3).length;
+  if(!wrongCount) h = h.replace('id="reviewBtn"','id="reviewBtn" style="display:none"');
   $("reportCard").innerHTML=h;
+  _lastReportArgs = [rep,pct,avg]; // save for back button
 }
 function disableCtrl(on){["hintBtn","dkBtn"].forEach(id=>{const e=$(id);if(e)e.disabled=on;});}
 </script>
